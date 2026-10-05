@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Label check</title>
+<link rel="icon" href="data:,">
+<script src="coi-serviceworker.js"></script>
+<style>
+  :root {
+    --ink: #1a2433; --muted: #4a5568; --paper: #f4f6f9; --panel: #fff; --rule: #c9ced6;
+    --action: #1f3a5f; --focus: #0b5fff;
+    --ok: #1e6b3a; --ok-bg: #e7f4ec; --warn: #7a4f00; --warn-bg: #fff3d1; --bad: #a3231f; --bad-bg: #fbe9e8;
+    font-size: 18px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); line-height: 1.5;
+    font-family: system-ui, "Segoe UI", Roboto, Arial, sans-serif; font-variant-numeric: tabular-nums; }
+  header { background: var(--action); color: #fff; }
+  header .wrap { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem 1rem; padding: 1rem 1.25rem; }
+  h1 { margin: 0; font-size: 1.6rem; letter-spacing: -.01em; }
+  header p { margin: 0; opacity: .9; }
+  .wrap { max-width: 72rem; margin: 0 auto; }
+  main { padding: 1.25rem; }
+  #status { margin: 0 0 1.25rem; padding: .7rem 1rem; background: var(--panel); border-left: 6px solid var(--action);
+    font-weight: 600; }
+  #status.bad { border-color: var(--bad); color: var(--bad); }
+
+  .steps { display: grid; gap: 1.25rem; grid-template-columns: 1fr; }
+  @media (min-width: 60rem) { .steps { grid-template-columns: 1fr 1fr; } }
+  .step { background: var(--panel); border: 1px solid var(--rule); border-radius: .5rem; padding: 1.1rem 1.25rem 1.25rem; }
+  h2 { display: flex; align-items: center; gap: .6rem; margin: 0 0 .8rem; font-size: 1.2rem; }
+  h2 .n { display: inline-grid; place-items: center; width: 1.8rem; height: 1.8rem; border-radius: 50%;
+    background: var(--action); color: #fff; font-size: 1rem; }
+
+  .drop { display: block; border: 3px dashed var(--rule); border-radius: .5rem; padding: 2rem 1rem; text-align: center;
+    cursor: pointer; background: var(--paper); }
+  .drop:hover, .drop.over, .drop:focus-within { border-color: var(--action); background: #e9eef5; }
+  .drop input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .drop strong { display: block; font-size: 1.25rem; color: var(--action); text-decoration: underline; }
+  #photo-count { margin: .8rem 0 0; font-weight: 600; }
+  #photo-count.added { color: var(--ok); }
+  #photo-list { list-style: none; display: flex; flex-wrap: wrap; gap: .5rem; padding: 0; margin: .6rem 0 0; }
+  #photo-list li { display: flex; align-items: center; gap: .4rem; max-width: 100%; padding: .25rem .5rem .25rem .25rem;
+    border: 1px solid var(--rule); border-radius: .35rem; background: var(--paper); font-size: .85rem; }
+  #photo-list img { width: 2.4rem; height: 2.4rem; object-fit: cover; border-radius: .2rem; }
+  #photo-list span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .fields { display: grid; gap: .8rem 1rem; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); }
+  label.f { display: block; font-weight: 600; }
+  input[type=text] { width: 100%; font: inherit; padding: .55rem .6rem; margin-top: .2rem; color: var(--ink);
+    border: 2px solid var(--rule); border-radius: .35rem; background: #fff; }
+  input[type=text]:focus { border-color: var(--action); }
+  .hint { margin: .8rem 0 0; color: var(--muted); font-size: .9rem; }
+  details.more { margin-top: 1rem; border-top: 1px solid var(--rule); padding-top: .6rem; }
+  details.more summary { cursor: pointer; font-weight: 600; color: var(--action); }
+  details.more p { margin: .5rem 0; }
+  code { font-size: .9em; background: var(--paper); padding: 0 .25rem; border-radius: .2rem; }
+
+  .actions { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem; margin: 1.5rem 0; }
+  button { font: inherit; font-weight: 700; padding: .7rem 1.3rem; border: 2px solid var(--action); border-radius: .4rem;
+    background: #fff; color: var(--action); cursor: pointer; }
+  button.main { background: var(--action); color: #fff; font-size: 1.15rem; padding: .85rem 2.2rem; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+  #summary { font-size: 1.2rem; font-weight: 700; margin: 0; }
+  .card { background: var(--panel); border: 1px solid var(--rule); border-radius: .5rem; margin: .8rem 0; }
+  .card > summary { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .8rem; padding: .7rem 1rem; cursor: pointer; }
+  .card > summary strong { overflow-wrap: anywhere; }
+  .card small { color: var(--muted); }
+  .card .body { display: flex; flex-wrap: wrap; gap: 1.25rem; padding: 0 1rem 1rem; }
+  .card .shots { display: flex; flex-wrap: wrap; gap: .5rem; max-width: 27rem; }
+  .card .body img { width: 13rem; max-height: 17rem; object-fit: contain; border: 1px solid var(--rule); background: var(--paper); }
+  .card .side { flex: 1; min-width: 18rem; }
+  .card .side > p { margin: 0 0 .6rem; font-weight: 600; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: .45rem .5rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-size: .85rem; color: var(--muted); }
+  pre { white-space: pre-wrap; font-size: .8rem; background: var(--paper); padding: .6rem; border-radius: .3rem; }
+  .card details summary { cursor: pointer; color: var(--action); margin-top: .6rem; }
+
+  /* Result words. The overall result is the stamp: heavy border, so it reads at a glance. */
+  .badge { display: inline-flex; align-items: center; gap: .3rem; font-weight: 700; white-space: nowrap;
+    padding: .05rem .55rem; border: 2px solid; border-radius: .3rem; }
+  .stamp { font-size: 1.05rem; padding: .15rem .7rem; border-width: 3px; }
+  .ok { color: var(--ok); background: var(--ok-bg); }
+  .warn { color: var(--warn); background: var(--warn-bg); }
+  .bad { color: var(--bad); background: var(--bad-bg); }
+
+  footer { color: var(--muted); font-size: .85rem; padding: 0 1.25rem 2rem; }
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <h1>Label check</h1>
+  <p>Check that a label matches its application.</p>
+</div></header>
+
+<main class="wrap">
+<p id="status" role="status" aria-live="polite"></p>
+
+<div class="steps">
+  <section class="step" aria-labelledby="s1">
+    <h2 id="s1"><span class="n" aria-hidden="true">1</span> Add label photos</h2>
+    <label class="drop" id="drop">
+      <input id="photos" type="file" accept="image/*" multiple>
+      <strong>Select photos</strong> or drop them here
+    </label>
+    <p id="photo-count" aria-live="polite"></p>
+    <ul id="photo-list"></ul>
+  </section>
+
+  <section class="step" aria-labelledby="s2">
+    <h2 id="s2"><span class="n" aria-hidden="true">2</span> What does the application say?</h2>
+    <div class="fields">
+      <label class="f">Brand name <input id="brand" type="text" autocomplete="off"></label>
+      <label class="f">Class / type <input id="classType" type="text" autocomplete="off"></label>
+      <label class="f">Alcohol (%) <input id="abv" type="text" inputmode="decimal" placeholder="45" autocomplete="off"></label>
+      <label class="f">Net contents <input id="volume" type="text" placeholder="750 mL" autocomplete="off"></label>
+      <label class="f">Producer and address <input id="producer" type="text" autocomplete="off"></label>
+      <label class="f">Country of origin (imports) <input id="country" type="text" autocomplete="off"></label>
+    </div>
+    <p class="hint">Leave a box empty to skip it. The government warning is always checked.</p>
+    <details class="more">
+      <summary>Many labels with different applications?</summary>
+      <p>Add a CSV file with one row per product. Columns: <code>file, brand, classType, abv, volume, producer, country</code>.
+      The <code>file</code> column holds the photo name. For several photos of one product, separate the names with
+      <code>;</code> (<code>front.jpg; back.jpg</code>). Photos not in the file use the boxes above.</p>
+      <p><input id="csv" type="file" accept=".csv,text/csv" aria-label="CSV file"> <span id="csv-count"></span></p>
+    </details>
+  </section>
+</div>
+
+<div class="actions">
+  <button id="go" class="main" disabled>Check labels</button>
+  <button id="sample" type="button">Try a sample</button>
+</div>
+
+<section aria-labelledby="summary">
+  <div class="actions">
+    <p id="summary" aria-live="polite"></p>
+    <button id="download" type="button" hidden>Download results (CSV)</button>
+  </div>
+  <div id="results"></div>
+</section>
+</main>
+
+<footer class="wrap">Photos stay on this computer. Nothing is sent or saved.</footer>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "name": "label-check",
+  "version": "0.1.0",
+  "description": "Check an alcohol label photo against its application. Runs in the browser.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "build": "node scripts/build.mjs",
+    "start": "node scripts/serve.mjs"
+  },
+  "dependencies": {
+    "onnxruntime-web": "^1.30.0",
+    "ppu-paddle-ocr": "^6.6.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "puppeteer-core": "^25.12.0"
+  }
+}

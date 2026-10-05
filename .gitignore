@@ -1,0 +1,9 @@
+node_modules/
+# Built by `npm run build`. CI builds them too.
+public/app.js
+public/worker.js
+public/ort/
+public/coi-serviceworker.js
+
+# Private notes.
+.dev/
